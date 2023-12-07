@@ -18,6 +18,7 @@ async def discover_cozy_life_devices(start_ip, end_ip):
     available_ips = []
 
     for ip in probelist:
+        print(f"Scanning IP: {ip}")
         a = tcp_client(ip, timeout=0.1)
 
         a._initSocket()
