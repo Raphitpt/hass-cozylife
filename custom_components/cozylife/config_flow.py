@@ -2,9 +2,13 @@ import voluptuous as vol
 from homeassistant import config_entries
 import logging
 from .const import DOMAIN
+from io import StringIO
 from ipaddress import ip_address
 from custom_components.cozylife.tcp_client import tcp_client
-from homeassistant.helpers import config_entry_flow
+
+
+
+_LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema({
     vol.Required('start_ip', description="Adresse IP de début"): str,
@@ -13,13 +17,61 @@ DATA_SCHEMA = vol.Schema({
     # Ajoutez d'autres options de configuration au besoin
 })
 
-def ips(start, end):
-    '''Return IPs in IPv4 range, inclusive. from stackoverflow'''
-    start_int = int(ip_address(start).packed.hex(), 16)
-    end_int = int(ip_address(end).packed.hex(), 16)
-    ips_list = [ip_address(ip).exploded for ip in range(start_int, end_int + 1)]
-    print(f"Scanning IPs: {ips_list}")
-    return ips_list
+async def process_config_data(user_input):
+    start_ip = user_input['start_ip']
+    end_ip = user_input['end_ip']
+
+    probelist = ips(start_ip, end_ip)
+
+    lights_buf = StringIO()
+    switches_buf = StringIO()
+
+    devices_data = []
+
+    for ip in probelist:
+        a = tcp_client(ip, timeout=0.1)
+        a._initSocket()
+
+        if a._connect:
+            device_info = a._device_info()
+            device_info_data = {
+                'ip': ip,
+                'unique_id': f'cozylife_{a._device_id[-4:]}',
+                'did': a._device_id,
+                'pid': a._pid,
+                'dmn': a._device_model_name,
+                'dpid': a._dpid,
+                'device_type': a._device_type_code,
+                'icon': a._icon,
+            }
+
+            devices_data.append(device_info_data)
+
+            device_info_str = f'  - ip: {ip}\n'
+            device_info_str += f'    unique_id: cozylife_{a._device_id[-4:]}\n'
+            device_info_str += f'    did: {a._device_id}\n'
+            device_info_str += f'    pid: {a._pid}\n'
+            device_info_str += f'    dmn: {a._device_model_name}\n'
+            device_info_str += f'    dpid: {a._dpid}\n'
+            device_info_str += f'    device_type: {a._device_type_code}\n'
+            device_info_str += f'    icon: {a._icon}\n'
+
+            if a._device_type_code == '01':
+                lights_buf.write(device_info_str)
+            elif a._device_type_code == '00':
+                switches_buf.write(device_info_str)
+
+    lights_config = lights_buf.getvalue()
+    switches_config = switches_buf.getvalue()
+
+    _LOGGER.info(f'lights:\n- platform: cozylife\n  lights:\n{lights_config}')
+    _LOGGER.info(f'switch:\n- platform: cozylife\n  switches:\n{switches_config}')
+
+    return {
+        'devices': devices_data,
+        'lights_config': lights_config,
+        'switches_config': switches_config,
+    }
 
 async def discover_cozy_life_devices(start_ip, end_ip):
     probelist = ips(start_ip, end_ip)
@@ -27,9 +79,8 @@ async def discover_cozy_life_devices(start_ip, end_ip):
     available_ips = []
 
     for ip in probelist:
-        print(f"Scanning IP: {ip}")
+        _LOGGER.info(f"Scanning IP: {ip}")
         a = tcp_client(ip, timeout=0.1)
-
         a._initSocket()
 
         if a._connect:
@@ -41,28 +92,18 @@ class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_discovery(self, user_input=None):
         """Handle discovery."""
         if user_input is not None:
-            # Ici, vous pouvez traiter les adresses IP découvertes et ajouter des options pour l'utilisateur
-
-            # par exemple, une liste déroulante avec les adresses IP découvertes
-
-
-            # Créez la configuration à ajouter
-            config_data = {
-                'ip_address': user_input['selected_ip'],
-                'port': user_input['port'],  # Vous devez également ajouter une option pour le port
-            }
-
-            # Ajoutez l'entrée de configuration
-            return self.async_create_entry(title='CozyLife Demo', data=config_data)
-
-        # Ici, vous pouvez rechercher les appareils disponibles et pré-remplir une liste déroulante
+            config_data = await process_config_data(user_input)
+            self.hass.data[DOMAIN] = config_data
+            return self.async_create_entry(title='CozyLife Demo', data={})
+            
         start_ip = user_input.get('start_ip')
         end_ip = user_input.get('end_ip')
 
         if not start_ip or not end_ip:
             return self.async_abort(reason='missing_start_end_ip')
 
-        available_ips = await discover_cozy_life_devices(start_ip, end_ip)  # Vous devez implémenter cette fonction
+        available_ips = await discover_cozy_life_devices(start_ip, end_ip)
+
         _LOGGER.debug("Available IPs: %s", available_ips)
         if not available_ips:
             return self.async_abort(reason='no_devices_found')
@@ -70,7 +111,8 @@ class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id='discovery',
             data_schema=vol.Schema({
-                vol.Required('selected_ip', description="Sélectionnez l'adresse IP", default=available_ips[0]): vol.In(available_ips),
+                vol.Required('start_ip', description="Adresse IP de début", default=start_ip): str,
+                vol.Required('end_ip', description="Adresse IP de fin", default=end_ip): str,
                 vol.Required('port', description="Port de l'appareil", default=5555): int,
             }),
         )
@@ -85,7 +127,9 @@ class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors['base'] = 'invalid_configuration'
             else:
                 # La configuration est valide, créez une entrée pour l'intégration
-                return self.async_create_entry(title='CozyLife Demo', data=user_input)
+                config_data = await process_config_data(user_input)
+                self.hass.data[DOMAIN] = config_data
+                return self.async_create_entry(title='CozyLife Demo', data={})
 
         # Affichez le formulaire à l'utilisateur
         return self.async_show_form(

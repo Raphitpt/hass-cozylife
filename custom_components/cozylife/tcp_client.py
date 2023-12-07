@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
 import socket
-import time
-from typing import Optional, Union, Any
+from typing import Union, Any
 import logging
-try:
-  from .utils import get_pid_list, get_sn
-except:
-  from utils import get_pid_list, get_sn
+from .utils import get_pid_list, get_sn  # Vérifiez l'importation de vos modules
 
 CMD_INFO = 0
 CMD_QUERY = 2
@@ -17,46 +13,26 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class tcp_client(object):
-    """
-    Represents a device
-    send:{"cmd":0,"pv":0,"sn":"1636463553873","msg":{}}
-    receiver:{"cmd":0,"pv":0,"sn":"1636463553873","msg":{"did":"629168597cb94c4c1d8f","dtp":"02","pid":"e2s64v",
-    "mac":"7cb94c4c1d8f","ip":"192.168.123.57","rssi":-33,"sv":"1.0.0","hv":"0.0.1"},"res":0}
-
-    send:{"cmd":2,"pv":0,"sn":"1636463611798","msg":{"attr":[0]}}
-    receiver:{"cmd":2,"pv":0,"sn":"1636463611798","msg":{"attr":[1,2,3,4,5,6],"data":{"1":0,"2":0,"3":1000,"4":1000,
-    "5":65535,"6":65535}},"res":0}
-
-    send:{"cmd":3,"pv":0,"sn":"1636463662455","msg":{"attr":[1],"data":{"1":0}}}
-    receiver:{"cmd":3,"pv":0,"sn":"1636463662455","msg":{"attr":[1],"data":{"1":0}},"res":0}
-    receiver:{"cmd":10,"pv":0,"sn":"1636463664000","res":0,"msg":{"attr":[1,2,3,4,5,6],"data":{"1":0,"2":0,"3":1000,
-    "4":1000,"5":65535,"6":65535}}}
-    """
-    _ip = str
-    _port = 5555
-    _connect = None  # socket
-
-    _device_id = str  # str
-    # _device_key = str
-    _pid = str
-    _device_type_code = str
-    _icon = str
-    _device_model_name = str
-    _dpid = []
-    # last sn
-    _sn = str
-
-    def __init__(self, ip, timeout=3):
+    def __init__(self, ip, timeout=0.01):
         self._ip = ip
+        self._port = 5555
+        self._connect = None  # socket
         self.timeout = timeout
+        self._device_id = str
+        self._pid = str
+        self._device_type_code = str
+        self._icon = str
+        self._device_model_name = str
+        self._dpid = []
+        self._sn = str
 
     def disconnect(self):
         if self._connect:
-            try: 
-                #self._connect.shutdown(socket.SHUT_RDWR)
+            try:
+                self._connect.shutdown(socket.SHUT_RDWR)
                 self._connect.close()
-            except:
-                pass
+            except Exception as e:
+                _LOGGER.error("Error while disconnecting: %s", str(e))
         self._connect = None
 
     def __del__(self):
@@ -64,23 +40,18 @@ class tcp_client(object):
 
     def _initSocket(self):
         """Initialize socket connection."""
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
+        self._connect = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._connect.settimeout(self.timeout)
+
         try:
-            self._sock.connect((self._ip, self._port))
+            self._connect.connect((self._ip, self._port))
         except Exception as e:
             _LOGGER.error("_initSocket error, ip=%s, error=%s", self._ip, str(e))
-            self._connect = False
-            return
-        self._connect = True
-
+            self.disconnect()
+            self._connect = None
 
     @property
     def check(self) -> bool:
-        """
-        Determine whether the device is filtered
-        :return:
-        """
         return True
 
     @property
@@ -104,31 +75,20 @@ class tcp_client(object):
         return self._device_id
 
     def _device_info(self) -> None:
-        """
-        get info for device model
-        :return:
-        """
         self._only_send(CMD_INFO, {})
         try:
-            try:
-                resp = self._connect.recv(1024)
-            except:
-                self.disconnect()
-                self._initSocket()
-                return None
+            resp = self._connect.recv(1024)
             resp_json = json.loads(resp.strip())
-        except:
-            _LOGGER.info('_device_info.recv.error')
+        except Exception as e:
+            _LOGGER.info('_device_info.recv.error: %s', str(e))
             return None
 
         if resp_json.get('msg') is None or type(resp_json['msg']) is not dict:
             _LOGGER.info('_device_info.recv.error1')
-
             return None
 
         if resp_json['msg'].get('did') is None:
             _LOGGER.info('_device_info.recv.error2')
-
             return None
         self._device_id = resp_json['msg']['did']
 
@@ -153,7 +113,6 @@ class tcp_client(object):
                 self._device_type_code = item['device_type_code']
                 break
 
-        # _LOGGER.info(pid_list)
         _LOGGER.info(self._device_id)
         _LOGGER.info(self._device_type_code)
         _LOGGER.info(self._pid)
@@ -161,12 +120,6 @@ class tcp_client(object):
         _LOGGER.info(self._icon)
 
     def _get_package(self, cmd: int, payload: dict) -> bytes:
-        """
-        package message
-        :param cmd:int:
-        :param payload:
-        :return:
-        """
         self._sn = get_sn()
         if CMD_SET == cmd:
             message = {
@@ -202,37 +155,23 @@ class tcp_client(object):
         return bytes(payload_str + "\r\n", encoding='utf8')
 
     def _send_receiver(self, cmd: int, payload: dict) -> Union[dict, Any]:
-        """
-        send & receiver
-        :param cmd:
-        :param payload:
-        :return:
-        """
         try:
             self._connect.send(self._get_package(cmd, payload))
-        except:
-            try:
-                self.disconnect()
-                self._initSocket()
-                self._connect.send(self._get_package(cmd, payload))
-            except:
-                pass
+        except Exception as e:
+            _LOGGER.error("Error sending data: %s", str(e))
+            return None
+
         try:
             i = 10
             while i > 0:
                 res = self._connect.recv(1024)
-                # print(f'res={res},sn={self._sn},{self._sn in str(res)}')
                 i -= 1
-                # only allow same sn
                 if self._sn in str(res):
                     payload = json.loads(res.strip())
-                    if payload is None or len(payload) == 0:
+                    if not payload or not payload.get('msg') or not isinstance(payload['msg'], dict):
                         return None
 
-                    if payload.get('msg') is None or type(payload['msg']) is not dict:
-                        return None
-
-                    if payload['msg'].get('data') is None or type(payload['msg']['data']) is not dict:
+                    if not payload['msg'].get('data') or not isinstance(payload['msg']['data'], dict):
                         return None
 
                     return payload['msg']['data']
@@ -240,40 +179,21 @@ class tcp_client(object):
             return None
 
         except Exception as e:
-            # print(f'e={e}')
-            _LOGGER.info(f'_only_send.recv.error:{e}')
+            _LOGGER.info(f'_only_send.recv.error: %s', str(e))
             return None
 
     def _only_send(self, cmd: int, payload: dict) -> None:
-        """
-        send but not receiver
-        :param cmd:
-        :param payload:
-        :return:
-        """
         try:
             self._connect.send(self._get_package(cmd, payload))
-        except:
+        except Exception as e:
+            _LOGGER.error("Error sending data: %s", str(e))
+            self.disconnect()
+            self._initSocket()
             self._connect.send(self._get_package(cmd, payload))
-            try:
-                self.disconnect()
-                self._initSocket()
-                self._connect.send(self._get_package(cmd, payload))
-            except:
-                self.disconnect()
 
     def control(self, payload: dict) -> bool:
-        """
-        control use dpid
-        :param payload:
-        :return:
-        """
         self._only_send(CMD_SET, payload)
         return True
 
     def query(self) -> dict:
-        """
-        query device state
-        :return:
-        """
         return self._send_receiver(CMD_QUERY, {})
