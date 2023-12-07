@@ -2,6 +2,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 import logging
 from .const import DOMAIN
+from ipaddress import ip_address
 from custom_components.cozylife.tcp_client import tcp_client
 from homeassistant.helpers import config_entry_flow
 
@@ -11,6 +12,14 @@ DATA_SCHEMA = vol.Schema({
     vol.Required('port', description="Port de l'appareil", default=5555): int,
     # Ajoutez d'autres options de configuration au besoin
 })
+
+def ips(start, end):
+    '''Return IPs in IPv4 range, inclusive. from stackoverflow'''
+    start_int = int(ip_address(start).packed.hex(), 16)
+    end_int = int(ip_address(end).packed.hex(), 16)
+    ips_list = [ip_address(ip).exploded for ip in range(start_int, end_int + 1)]
+    print(f"Scanning IPs: {ips_list}")
+    return ips_list
 
 async def discover_cozy_life_devices(start_ip, end_ip):
     probelist = ips(start_ip, end_ip)
