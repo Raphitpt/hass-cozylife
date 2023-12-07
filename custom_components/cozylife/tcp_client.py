@@ -63,14 +63,17 @@ class tcp_client(object):
         self.disconnect()
 
     def _initSocket(self):
+        """Initialize socket connection."""
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(self.timeout)
-            s.connect((self._ip, self._port))
-            self._connect = s
-        except:
-            _LOGGER.info(f'_initSocketerror,ip={self._ip}')
-            self.disconnect()
+            self._sock.connect((self._ip, self._port))
+        except Exception as e:
+            _LOGGER.error("_initSocket error, ip=%s, error=%s", self._ip, str(e))
+            self._connect = False
+            return
+        self._connect = True
+
 
     @property
     def check(self) -> bool:
