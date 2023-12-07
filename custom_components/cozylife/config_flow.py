@@ -19,7 +19,7 @@ DATA_SCHEMA = vol.Schema({
     vol.Required('start_ip', description="Adresse IP de début"): str,
     vol.Required('end_ip', description="Adresse IP de fin"): str,
     vol.Required('port', description="Port de l'appareil", default=5555): int,
-    # Ajoutez d'autres options de configuration au besoin
+    # Ajoutez d'autres options deconfiguration au besoin
 })
 
 async def process_config_data(user_input):
