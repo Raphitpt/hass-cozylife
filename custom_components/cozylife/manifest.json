@@ -1,6 +1,6 @@
 {
   "domain": "cozylife",
-  "name": "cozylife light",
+  "name": "cozylife test raph",
   "documentation": "https://github.com/yangqian/hass-cozylife",
   "dependencies": [],
   "codeowners": ["yangqian","cozylife"],
