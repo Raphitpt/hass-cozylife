@@ -1,25 +1,67 @@
 import voluptuous as vol
-import ipaddress
 from homeassistant import config_entries
 
 from .const import DOMAIN
+from homeassistant.helpers import config_entry_flow
 
 DATA_SCHEMA = vol.Schema({
-    vol.Required('ip_start', description="IP de début"): str,
-    vol.Required('ip_end', description="IP de fin"): str,
+    vol.Required('start_ip', description="Adresse IP de début"): str,
+    vol.Required('end_ip', description="Adresse IP de fin"): str,
     vol.Required('port', description="Port de l'appareil", default=5555): int,
     # Ajoutez d'autres options de configuration au besoin
 })
 
-def is_valid_ip(ip):
-    try:
-        ipaddress.ip_address(ip)
-        return True
-    except ValueError:
-        return False
-    
+async def discover_cozy_life_devices(start_ip, end_ip):
+    probelist = ips(start_ip, end_ip)
+
+    available_ips = []
+
+    for ip in probelist:
+        a = tcp_client(ip, timeout=0.1)
+
+        a._initSocket()
+
+        if a._connect:
+            available_ips.append(ip)
+
+    return available_ips
+
 class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a CozyLife Local Pull config flow."""
+    async def async_step_discovery(self, user_input=None):
+        """Handle discovery."""
+        if user_input is not None:
+            # Ici, vous pouvez traiter les adresses IP découvertes et ajouter des options pour l'utilisateur
+
+            # par exemple, une liste déroulante avec les adresses IP découvertes
+            
+
+            # Créez la configuration à ajouter
+            config_data = {
+                'ip_address': user_input['selected_ip'],
+                'port': user_input['port'],  # Vous devez également ajouter une option pour le port
+            }
+
+            # Ajoutez l'entrée de configuration
+            return self.async_create_entry(title='CozyLife Demo', data=config_data)
+
+        # Ici, vous pouvez rechercher les appareils disponibles et pré-remplir une liste déroulante
+        start_ip = user_input.get('start_ip')
+        end_ip = user_input.get('end_ip')
+
+        if not start_ip or not end_ip:
+            return self.async_abort(reason='missing_start_end_ip')
+
+        available_ips = await discover_cozy_life_devices(start_ip, end_ip)  # Vous devez implémenter cette fonction
+        if not available_ips:
+            return self.async_abort(reason='no_devices_found')
+
+        return self.async_show_form(
+            step_id='discovery',
+            data_schema=vol.Schema({
+                vol.Required('selected_ip', description="Sélectionnez l'adresse IP", default=available_ips[0]): vol.In(available_ips),
+                vol.Required('port', description="Port de l'appareil", default=5555): int,
+            }),
+        )
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step when the user initializes a new integration."""
@@ -42,32 +84,5 @@ class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _is_valid_configuration(self, user_input):
         """Validez les options de configuration."""
-        ip_start = user_input['ip_start']
-        ip_end = user_input['ip_end']
-        port = user_input['port']
-
-        # Vérifiez si les adresses IP sont au format correct
-        if not is_valid_ip(ip_start) or not is_valid_ip(ip_end):
-            return False
-
-        # Vérifiez si le port est dans une plage valide (par exemple, entre 1 et 65535)
-        if not 1 <= port <= 65535:
-            return False
-
+        # Implémentez votre logique de validation ici
         return True
-    
-
-
-    async def async_step_discovery(self, user_input=None):
-        """Handle discovery step."""
-        if user_input is not None:
-            # L'utilisateur a choisi un appareil découvert, traitez les données
-            return self.async_create_entry(title='CozyLife Demo', data=user_input)
-
-        # Affichez une liste d'appareils découverts
-        return self.async_show_form(
-            step_id='discovery',
-            data_schema=vol.Schema({
-                vol.Required('discovered_device', description="Appareil découvert"): str,
-            }),
-        )
