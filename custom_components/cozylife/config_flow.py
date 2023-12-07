@@ -7,6 +7,11 @@ from ipaddress import ip_address
 from custom_components.cozylife.tcp_client import tcp_client
 
 
+def ips(start, end):
+    '''Return IPs in IPv4 range, inclusive. from stackoverflow'''
+    start_int = int(ip_address(start).packed.hex(), 16)
+    end_int = int(ip_address(end).packed.hex(), 16)
+    return [ip_address(ip).exploded for ip in range(start_int, end_int + 1)]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -141,4 +146,5 @@ class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _is_valid_configuration(self, user_input):
         """Validez les options de configuration."""
         # Implémentez votre logique de validation ici
+        
         return True
