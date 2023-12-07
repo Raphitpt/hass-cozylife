@@ -3,8 +3,18 @@ import time
 import requests
 import logging
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
 _LOGGER = logging.getLogger(__name__)
+
+
+def get_sn() -> str:
+    """
+    message sn
+    :return: str
+    """
+    return str(int(round(time.time() * 1000)))
+
+# cache get_pid_list result for many calls
+_CACHE_PID = []
 
 async def get_pid_list(hass, lang='en') -> list:
     """
