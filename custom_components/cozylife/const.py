@@ -1,4 +1,5 @@
-DOMAIN = "cozylife"
+# DOMAIN = "cozylife"
+DOMAIN = "hass_cozylife_local_pull"
 
 # http://doc.doit/project-5/doc-8/
 SWITCH_TYPE_CODE = '00'

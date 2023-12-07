@@ -34,11 +34,13 @@ for ip in probelist:
     if a._connect:
         device_info = a._device_info()
         device_info_str = f'  - ip: {ip}\n'
+        device_info_str += f'    unique_id: cozylife_{a._device_id[-4:]}\n'
         device_info_str += f'    did: {a._device_id}\n'
         device_info_str += f'    pid: {a._pid}\n'
         device_info_str += f'    dmn: {a._device_model_name}\n'
         device_info_str += f'    dpid: {a._dpid}\n'
         device_info_str += f'    device_type: {a._device_type_code}\n'
+        device_info_str += f'    icon: {a._icon}\n'
 
         if a._device_type_code == '01':
             lights_buf.write(device_info_str)
