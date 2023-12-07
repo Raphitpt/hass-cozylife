@@ -1,7 +1,8 @@
 import voluptuous as vol
 from homeassistant import config_entries
-
+import logging
 from .const import DOMAIN
+from custom_components.cozylife.tcp_client import tcp_client
 from homeassistant.helpers import config_entry_flow
 
 DATA_SCHEMA = vol.Schema({
@@ -33,7 +34,7 @@ class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Ici, vous pouvez traiter les adresses IP découvertes et ajouter des options pour l'utilisateur
 
             # par exemple, une liste déroulante avec les adresses IP découvertes
-            
+
 
             # Créez la configuration à ajouter
             config_data = {
@@ -52,6 +53,7 @@ class CozyLifeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason='missing_start_end_ip')
 
         available_ips = await discover_cozy_life_devices(start_ip, end_ip)  # Vous devez implémenter cette fonction
+        _LOGGER.debug("Available IPs: %s", available_ips)
         if not available_ips:
             return self.async_abort(reason='no_devices_found')
 
