@@ -1,6 +1,6 @@
 import json
 import time
-import requests
+import pathlib
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,18 +26,20 @@ async def get_pid_list(lang='en') -> list:
     if len(_CACHE_PID) != 0:
         return _CACHE_PID
 
-    domain = 'api-us.doiting.com'
-    protocol = 'http'
-    url_prefix = protocol + '://' + domain
+    # domain = 'api-us.doiting.com'
+    # protocol = 'http'
+    # url_prefix = protocol + '://' + domain
+    # try:
+    #     res = requests.get(url_prefix + '/api/device_product/model', params={'lang': lang}, timeout=3)
+    #     res.raise_for_status()  # Raise an HTTPError for bad responses
+    # except requests.exceptions.RequestException as e:
+    #     _LOGGER.error(f'Error making API request: {e}')
+    #     return []
+    fn = pathlib.Path(__file__).parent / 'model.json'
+    with open(fn, 'r') as f:
+        res= f.readlines()
     try:
-        res = requests.get(url_prefix + '/api/device_product/model', params={'lang': lang}, timeout=3)
-        res.raise_for_status()  # Raise an HTTPError for bad responses
-    except requests.exceptions.RequestException as e:
-        _LOGGER.error(f'Error making API request: {e}')
-        return []
-    
-    try:
-        pid_list = res.json()
+       pid_list = json.loads(res[0])
     except json.JSONDecodeError as e:
         _LOGGER.error(f'Error decoding JSON response: {e}')
         return []
