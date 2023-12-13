@@ -16,7 +16,7 @@ def get_sn() -> str:
 # cache get_pid_list result for many calls
 _CACHE_PID = []
 
-async def get_pid_list(hass, lang='en') -> list:
+async def get_pid_list(lang='en') -> list:
     """
     http://doc.doit/project-12/doc-95/
     :param lang:
@@ -29,19 +29,14 @@ async def get_pid_list(hass, lang='en') -> list:
     domain = 'api-us.doiting.com'
     protocol = 'http'
     url_prefix = protocol + '://' + domain
-    try:
-        # Utilisez `await hass.async_add_executor_job()` pour faire la requête de manière asynchrone
-        res = await hass.async_add_executor_job(
-            requests.get,
-            url_prefix + '/api/device_product/model',
-            params={'lang': lang},
-            timeout=3
-        )
-        res.raise_for_status()  # Raise an HTTPError for bad responses
-    except requests.exceptions.RequestException as e:
-        _LOGGER.error(f'Error making API request: {e}')
+    res = requests.get(url_prefix + '/api/device_product/model', {
+        'lang': lang
+    }, timeout=3)
+    
+    if 200 != res.status_code:
+        _LOGGER.info('get_pid_list.result is none')
         return []
-
+    
     try:
         pid_list = res.json()
     except json.JSONDecodeError as e:

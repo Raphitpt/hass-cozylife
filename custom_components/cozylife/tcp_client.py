@@ -74,7 +74,7 @@ class tcp_client(object):
     def device_id(self):
         return self._device_id
 
-    def _device_info(self, hass) -> None:
+    def _device_info(self) -> None:
         self._only_send(CMD_INFO, {})
         try:
             resp = self._connect.recv(1024)
@@ -98,7 +98,7 @@ class tcp_client(object):
 
         self._pid = resp_json['msg']['pid']
 
-        pid_list = get_pid_list(hass)
+        pid_list = get_pid_list()
 
         for item in pid_list:
             match = False
