@@ -98,8 +98,14 @@ class tcp_client(object):
             _LOGGER.info('_device_info.recv.error3')
             return None
 
-        # Call the asynchronous function in a synchronous context
-        pid_list = asyncio.run(get_pid_list())
+    # Utilisez asyncio.create_task pour exécuter la fonction asynchrone sans bloquer
+        loop = asyncio.get_running_loop()
+        pid_list_task = loop.create_task(get_pid_list())
+
+        # Continuez à exécuter d'autres tâches synchrones ici
+
+        # Attendez que la tâche asynchrone soit terminée
+        pid_list = loop.run_until_complete(pid_list_task)
 
         for item in pid_list:
             match = False
