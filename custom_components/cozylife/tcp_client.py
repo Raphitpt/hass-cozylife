@@ -76,7 +76,7 @@ class tcp_client(object):
         return self._device_id
 
 
-    def _device_info(self) -> None:
+    async def _device_info(self) -> None:
         self._only_send(CMD_INFO, {})
         try:
             resp = self._connect.recv(1024)
@@ -97,10 +97,9 @@ class tcp_client(object):
         if resp_json['msg'].get('pid') is None:
             _LOGGER.info('_device_info.recv.error3')
             return None
-
-        pid_list_task = asyncio.ensure_future(get_pid_list())
-        pid_list = asyncio.run(pid_list_task)
-
+        
+        pid_list_task = get_pid_list()
+        pid_list = await pid_list_task
 
         for item in pid_list:
             match = False
