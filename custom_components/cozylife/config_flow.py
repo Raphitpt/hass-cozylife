@@ -41,7 +41,6 @@ async def process_config_data(user_input):
             device_info = a._device_info()
             device_info_data = {
                 'ip': ip,
-                'unique_id': f'cozylife_{a._device_id[-4:]}',
                 'did': a._device_id,
                 'pid': a._pid,
                 'dmn': a._device_model_name,
