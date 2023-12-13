@@ -2,7 +2,7 @@ import json
 import time
 import requests
 import logging
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -29,12 +29,11 @@ async def get_pid_list(lang='en') -> list:
     domain = 'api-us.doiting.com'
     protocol = 'http'
     url_prefix = protocol + '://' + domain
-    res = requests.get(url_prefix + '/api/device_product/model', {
-        'lang': lang
-    }, timeout=3)
-    
-    if 200 != res.status_code:
-        _LOGGER.info('get_pid_list.result is none')
+    try:
+        res = requests.get(url_prefix + '/api/device_product/model', params={'lang': lang}, timeout=3)
+        res.raise_for_status()  # Raise an HTTPError for bad responses
+    except requests.exceptions.RequestException as e:
+        _LOGGER.error(f'Error making API request: {e}')
         return []
     
     try:
