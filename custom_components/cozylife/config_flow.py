@@ -52,7 +52,6 @@ async def process_config_data(user_input):
             devices_data.append(device_info_data)
 
             device_info_str = f'  - ip: {ip}\n'
-            device_info_str += f'    unique_id: cozylife_{a._device_id[-4:]}\n'
             device_info_str += f'    did: {a._device_id}\n'
             device_info_str += f'    pid: {a._pid}\n'
             device_info_str += f'    dmn: {a._device_model_name}\n'
