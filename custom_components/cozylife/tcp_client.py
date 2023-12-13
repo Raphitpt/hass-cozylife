@@ -3,6 +3,7 @@ import json
 import socket
 from typing import Union, Any
 import logging
+import asyncio
 from .utils import get_pid_list, get_sn  # Vérifiez l'importation de vos modules
 
 CMD_INFO = 0
@@ -74,6 +75,7 @@ class tcp_client(object):
     def device_id(self):
         return self._device_id
 
+
     def _device_info(self) -> None:
         self._only_send(CMD_INFO, {})
         try:
@@ -96,9 +98,8 @@ class tcp_client(object):
             _LOGGER.info('_device_info.recv.error3')
             return None
 
-        self._pid = resp_json['msg']['pid']
-
-        pid_list = get_pid_list()
+        # Call the asynchronous function in a synchronous context
+        pid_list = asyncio.run(get_pid_list())
 
         for item in pid_list:
             match = False
