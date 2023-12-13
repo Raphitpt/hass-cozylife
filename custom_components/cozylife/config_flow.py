@@ -1,5 +1,6 @@
 import voluptuous as vol
 from homeassistant import config_entries
+import hass
 import logging
 from .const import DOMAIN
 from io import StringIO
@@ -38,7 +39,7 @@ async def process_config_data(user_input):
         a._initSocket()
 
         if a._connect:
-            device_info = a._device_info()
+            device_info = a._device_info(hass)
             device_info_data = {
                 'ip': ip,
                 'unique_id': f'cozylife_{a._device_id[-4:]}',

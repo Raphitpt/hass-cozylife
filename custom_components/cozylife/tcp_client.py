@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import hass
 import socket
 from typing import Union, Any
 import logging
@@ -74,7 +75,7 @@ class tcp_client(object):
     def device_id(self):
         return self._device_id
 
-    def _device_info(self) -> None:
+    def _device_info(self, hass) -> None:
         self._only_send(CMD_INFO, {})
         try:
             resp = self._connect.recv(1024)
@@ -98,7 +99,8 @@ class tcp_client(object):
 
         self._pid = resp_json['msg']['pid']
 
-        pid_list = get_pid_list()
+        pid_list = get_pid_list(hass)
+
         for item in pid_list:
             match = False
             for item1 in item['device_model']:
