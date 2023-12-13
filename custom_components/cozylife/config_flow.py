@@ -1,6 +1,5 @@
 import voluptuous as vol
 from homeassistant import config_entries
-import hass
 import logging
 from .const import DOMAIN
 from io import StringIO

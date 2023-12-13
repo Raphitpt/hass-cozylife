@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import json
-import hass
 import socket
 from typing import Union, Any
 import logging
